@@ -84,3 +84,29 @@ def test_simulator_futures_close_lifecycle():
     # Margin should have been returned
     assert simulator.futures_margin_balance > margin_before
 
+
+def test_close_futures_position_direct_and_not_found():
+    simulator.reset()
+    # 1. When no position exists
+    res = simulator.close_futures_position("BTCUSDT")
+    assert res["found"] is False
+    assert res["success"] is False
+    assert res["message"] == "You don't have any running future trade"
+
+    # 2. Open long futures position
+    open_res = simulator.execute_futures_order("BTCUSDT", "BUY", amount_usdt=200.0, leverage=10)
+    assert open_res["success"] is True
+    assert "BTCUSDT" in simulator.futures_positions
+
+    # 3. Close the position
+    close_res = simulator.close_futures_position("BTCUSDT", side="BUY")
+    assert close_res["found"] is True
+    assert close_res["success"] is True
+    assert "BTCUSDT" not in simulator.futures_positions
+
+    # 4. Closing again returns exact message
+    res2 = simulator.close_futures_position("BTCUSDT")
+    assert res2["found"] is False
+    assert res2["message"] == "You don't have any running future trade"
+
+

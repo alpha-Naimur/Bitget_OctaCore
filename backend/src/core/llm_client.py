@@ -48,7 +48,8 @@ from bitget_skills_hub.agentic_trading.tools import (
     execute_futures_order,
     execute_smart_dca,
     get_portfolio_status,
-    switch_execution_mode
+    switch_execution_mode,
+    close_futures_position
 )
 from bitget_skills_hub.sub_account.tools import (
     get_sub_account_status,
@@ -97,6 +98,7 @@ TOOL_MAP: Dict[str, Callable[..., Any]] = {
     # 6. Execution & Trading
     "execute_spot_order": execute_spot_order,
     "execute_futures_order": execute_futures_order,
+    "close_futures_position": close_futures_position,
     "execute_smart_dca": execute_smart_dca,
     "get_portfolio_status": get_portfolio_status,
     "switch_execution_mode": switch_execution_mode,
@@ -253,6 +255,21 @@ OPENAI_TOOL_SPECS = [
             "description": "Fetch portfolio total equity, available USDT, unrealized/realized PnL, and asset breakdown.",
             "parameters": {"type": "object", "properties": {}}
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "close_futures_position",
+            "description": "Close an active futures position (LONG or SHORT) on a crypto asset or tokenized US equity. If no running futures trade exists, returns found=False with message 'You don\\'t have any running future trade'.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "symbol": {"type": "string", "description": "Futures trading pair e.g. BTCUSDT, NVDAUSDT, ETHUSDT"},
+                    "side": {"type": "string", "enum": ["BUY", "SELL", "LONG", "SHORT"], "description": "Optional position side to close (e.g. LONG or SHORT)"}
+                },
+                "required": ["symbol"]
+            }
+        }
     }
 ]
 
@@ -280,6 +297,10 @@ When requested to analyze, backtest, or trade, ALWAYS call the appropriate tools
 TRADE ORDER DIRECTIVE:
 When the user explicitly commands you to buy, sell, or trade an asset (e.g. 'buy 20$ of btc on spot', 'sell nvda', 'buy 100$ aapl'):
 You MUST call `execute_spot_order` (for Spot) or `execute_futures_order` (for Futures). You may call market analysis tools alongside it, but you MUST dispatch `execute_spot_order` or `execute_futures_order` in the same turn so the trade is actually executed and recorded.
+
+POSITION CLOSE DIRECTIVE:
+When the user asks to close, exit, or terminate a futures position or trade (e.g. 'close btc long position', 'close my btc trade', 'close btc futures', 'exit position'):
+You MUST call `close_futures_position(symbol=...)`. NEVER open a new spot trade or a new futures order when the user asks to close a position. If the tool result indicates no running position was found (`found: false`), you MUST reply: "You don't have any running future trade".
 
 GREETING & CONVERSATIONAL DIRECTIVE:
 If the user is simply greeting you (e.g., 'hello', 'hi', 'hey', 'who are you', 'help') or asking what you can do, NEVER call trading, portfolio, or scanning tools. Greet them warmly as Bitget OctaCore, introduce your 8 specialist cores, and suggest actions they can take (e.g. 7x24 tokenized US stock scans, strategy backtests, or BTC market analysis).
@@ -344,6 +365,27 @@ def _format_tool_results_summary(user_prompt: str, tool_results: List[Dict[str, 
             if res.get("error"):
                 lines.append(f"- **Firewall Notice**: {res.get('error')}")
             lines.append("")
+
+        elif tname == "close_futures_position":
+            if not res.get("found"):
+                msg = res.get("message") or "You don't have any running future trade"
+                lines.append("#### ℹ️ Futures Position Status")
+                lines.append(f"- **Notice**: {msg}")
+                lines.append("")
+            else:
+                sym = res.get("symbol", "")
+                pnl = float(res.get("pnl") or 0.0)
+                qty = float(res.get("quantity") or 0.0)
+                exit_pr = float(res.get("exit_price") or 0.0)
+                entry_pr = float(res.get("entry_price") or 0.0)
+                pos_side = res.get("closed_position_side", res.get("side", ""))
+                lines.append(f"#### 🏁 Closed Futures Position: {pos_side} {sym}")
+                lines.append(f"- **Status**: **FILLED**")
+                lines.append(f"- **Quantity**: {qty}")
+                lines.append(f"- **Entry Price**: ${entry_pr:,.4f}")
+                lines.append(f"- **Exit Price**: ${exit_pr:,.4f}")
+                lines.append(f"- **Realized PnL**: ${pnl:+,.2f} USDT")
+                lines.append("")
 
         elif tname == "scan_tokenized_stocks":
             stocks = res.get("stocks", [])
@@ -507,12 +549,31 @@ class LLMAgentEngine:
                         "result": t_res
                     })
 
-                # Ensure explicit buy/sell orders requested by user are always executed
+                # Ensure explicit buy/sell or close orders requested by user are always executed
                 prompt_lower = user_prompt.lower()
+                is_close_command = any(k in prompt_lower for k in ["close", "exit", "terminate"])
                 is_order_command = any(k in prompt_lower for k in ["buy", "sell", "long", "short"])
-                has_execution_call = any(t["tool_name"] in ("execute_spot_order", "execute_futures_order") for t in tool_results)
+                has_execution_call = any(t["tool_name"] in ("execute_spot_order", "execute_futures_order", "close_futures_position") for t in tool_results)
 
-                if is_order_command and not has_execution_call:
+                if is_close_command and not has_execution_call:
+                    found_sym = "BTCUSDT"
+                    for s in ["NVDAUSDT", "AAPLUSDT", "TSLAUSDT", "SPYUSDT", "QQQUSDT", "ETHUSDT", "SOLUSDT", "BTCUSDT"]:
+                        if s.lower() in prompt_lower or s.replace("USDT", "").lower() in prompt_lower:
+                            found_sym = s
+                            break
+                    close_side = None
+                    if "long" in prompt_lower or "buy" in prompt_lower:
+                        close_side = "BUY"
+                    elif "short" in prompt_lower or "sell" in prompt_lower:
+                        close_side = "SELL"
+                    close_res = close_futures_position(symbol=found_sym, side=close_side)
+                    tool_results.append({
+                        "tool_name": "close_futures_position",
+                        "args": {"symbol": found_sym, "side": close_side},
+                        "result": close_res
+                    })
+
+                elif is_order_command and not is_close_command and not has_execution_call:
                     found_sym = "BTCUSDT"
                     for s in ["NVDAUSDT", "AAPLUSDT", "TSLAUSDT", "SPYUSDT", "QQQUSDT", "ETHUSDT", "SOLUSDT", "BTCUSDT"]:
                         if s.lower() in prompt_lower or s.replace("USDT", "").lower() in prompt_lower:
@@ -533,6 +594,15 @@ class LLMAgentEngine:
                     else:
                         order_res = execute_spot_order(symbol=found_sym, side=side, amount_usdt=amount, reason="Autonomous Direct Execution")
                         tool_results.append({"tool_name": "execute_spot_order", "args": {"symbol": found_sym, "side": side, "amount_usdt": amount}, "result": order_res})
+
+                # If close_futures_position was executed and position not found, reply directly
+                for t in tool_results:
+                    if t.get("tool_name") == "close_futures_position" and not t.get("result", {}).get("found", True):
+                        return {
+                            "provider": f"{model_name} (Alibaba Cloud)",
+                            "response": t.get("result", {}).get("message", "You don't have any running future trade"),
+                            "tool_calls": tool_results
+                        }
 
                 synth_prompt = (
                     f"User Request: {user_prompt}\n\n"
@@ -564,8 +634,9 @@ class LLMAgentEngine:
                 }
             else:
                 prompt_lower = user_prompt.lower()
+                is_close_command = any(k in prompt_lower for k in ["close", "exit", "terminate"])
                 is_order_command = any(k in prompt_lower for k in ["buy", "sell", "long", "short"])
-                if is_order_command:
+                if is_close_command or is_order_command:
                     return self._run_deterministic_agent(user_prompt)
                 return {
                     "provider": f"{model_name} (Alibaba Cloud)",
@@ -671,6 +742,15 @@ class LLMAgentEngine:
                         "args": fargs,
                         "result": t_res
                     })
+
+                # If close_futures_position was executed and position not found, reply directly
+                for t in tool_results:
+                    if t.get("tool_name") == "close_futures_position" and not t.get("result", {}).get("found", True):
+                        return {
+                            "provider": f"OpenRouter ({model_name})",
+                            "response": t.get("result", {}).get("message", "You don't have any running future trade"),
+                            "tool_calls": tool_results
+                        }
 
                 # Synthesize final trading report using tool results
                 try:
@@ -825,6 +905,32 @@ class LLMAgentEngine:
                 f"(24h: {top_chg:+.2f}%, RSI: {top_rsi}, Bias: {top_bias}).\n\n"
                 "💡 *Advantage: 7x24 weekend trading enables pricing macro developments and earnings surprises before traditional NYSE market hours.*"
             )
+
+        elif "close" in prompt_lower or "exit" in prompt_lower:
+            close_side = None
+            if "long" in prompt_lower or "buy" in prompt_lower:
+                close_side = "BUY"
+            elif "short" in prompt_lower or "sell" in prompt_lower:
+                close_side = "SELL"
+
+            res = close_futures_position(symbol=found_symbol, side=close_side)
+            tool_results.append({"tool_name": "close_futures_position", "args": {"symbol": found_symbol, "side": close_side}, "result": res})
+
+            if not res.get("found"):
+                synth = res.get("message", "You don't have any running future trade")
+            else:
+                pnl = res.get("pnl", 0.0)
+                pnl_str = f"+${pnl:.2f}" if pnl >= 0 else f"-${abs(pnl):.2f}"
+                synth = (
+                    f"⚡ **Futures Position Closed Successfully**:\n\n"
+                    f"- **Asset**: `{res.get('symbol')}`\n"
+                    f"- **Position Closed**: `{res.get('closed_position_side', 'FUTURES')}`\n"
+                    f"- **Execution Price**: `${res.get('exit_price', 0.0):,.2f}`\n"
+                    f"- **Quantity**: `{res.get('quantity')}`\n"
+                    f"- **Realized PnL**: `{pnl_str} USDT`\n"
+                    f"- **Trade ID**: `{res.get('trade_id', 'N/A')}`\n\n"
+                    "Trade closed and recorded in the audited Paper Trading Log."
+                )
 
         elif "buy" in prompt_lower or "execute" in prompt_lower or "order" in prompt_lower or "trade" in prompt_lower:
             amount = 100.0

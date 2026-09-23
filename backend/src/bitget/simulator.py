@@ -428,6 +428,114 @@ class PaperTradingSimulator:
                 "execution_mode": "SIMULATION"
             }
 
+    def close_futures_position(
+        self,
+        symbol: str,
+        side: Optional[str] = None,
+        reason: str = "Close Futures Position",
+        agent_core: str = "Core 5 - Execution Agent"
+    ) -> Dict[str, Any]:
+        """Close an active futures position (LONG or SHORT).
+
+        If no active position exists for the symbol, returns found=False and
+        message="You don't have any running future trade".
+        """
+        with self._lock:
+            sym_clean = symbol.upper().strip()
+            # Match symbol in futures_positions
+            matched_sym = None
+            target_pos = None
+
+            if sym_clean in self.futures_positions:
+                matched_sym = sym_clean
+                target_pos = self.futures_positions[sym_clean]
+            elif f"{sym_clean}USDT" in self.futures_positions:
+                matched_sym = f"{sym_clean}USDT"
+                target_pos = self.futures_positions[f"{sym_clean}USDT"]
+            else:
+                for k, v in self.futures_positions.items():
+                    if k.replace("USDT", "") == sym_clean.replace("USDT", ""):
+                        matched_sym = k
+                        target_pos = v
+                        break
+
+            if not target_pos or not matched_sym:
+                return {
+                    "success": False,
+                    "found": False,
+                    "symbol": symbol,
+                    "message": "You don't have any running future trade"
+                }
+
+            # Optional side validation (BUY/LONG vs SELL/SHORT)
+            pos_side = target_pos.get("side", "BUY")
+            if side:
+                side_req = "BUY" if side.upper() in ["BUY", "LONG"] else ("SELL" if side.upper() in ["SELL", "SHORT"] else side.upper())
+                if pos_side != side_req:
+                    return {
+                        "success": False,
+                        "found": False,
+                        "symbol": matched_sym,
+                        "message": "You don't have any running future trade"
+                    }
+
+            current_price = market_data.get_ticker_price(matched_sym) or target_pos["entry_price"]
+            entry_price = target_pos["entry_price"]
+            close_qty = target_pos["quantity"]
+            leverage = target_pos.get("leverage", 10)
+            margin = target_pos.get("margin", 0.0)
+
+            if pos_side == "BUY":
+                pnl = (current_price - entry_price) * close_qty
+            else:
+                pnl = (entry_price - current_price) * close_qty
+
+            notional = close_qty * current_price
+            fee = notional * 0.0006
+
+            self.realized_pnl += pnl
+            self.futures_margin_balance += (margin + pnl - fee)
+
+            self.futures_positions.pop(matched_sym, None)
+            self.futures_leverage.pop(matched_sym, None)
+
+            trade_id = str(uuid.uuid4())[:8]
+            record = TradeRecord(
+                id=trade_id,
+                symbol=matched_sym,
+                side=f"FUTURES_CLOSE_{pos_side}",
+                order_type="MARKET",
+                amount_usdt=round(notional, 2),
+                price=round(current_price, 4),
+                quantity=round(close_qty, 4),
+                fee=round(fee, 4),
+                pnl=round(pnl, 2),
+                status="FILLED",
+                reason=reason,
+                agent_core=agent_core,
+                execution_mode="SIMULATION"
+            )
+            memory.record_trade(record)
+            memory.log("Simulator", f"Closed Futures {pos_side} {matched_sym}, qty: {close_qty:.4f}, exit: ${current_price:.2f}, PnL: ${pnl:.2f}", LogLevel.SUCCESS)
+
+            return {
+                "success": True,
+                "found": True,
+                "trade_id": trade_id,
+                "symbol": matched_sym,
+                "side": f"CLOSE_{pos_side}",
+                "closed_position_side": "LONG" if pos_side == "BUY" else "SHORT",
+                "leverage": leverage,
+                "notional_usdt": round(notional, 2),
+                "pnl": round(pnl, 2),
+                "entry_price": round(entry_price, 4),
+                "exit_price": round(current_price, 4),
+                "quantity": round(close_qty, 4),
+                "fee": round(fee, 4),
+                "execution_mode": "SIMULATION",
+                "message": f"Successfully closed {pos_side} futures position for {matched_sym} at ${current_price:,.2f} with PnL of ${pnl:+.2f} USDT."
+            }
+
     def trigger_emergency_kill_switch(self) -> Dict[str, Any]:
         """Emergency circuit breaker: liquidates all positions into USDT and halts trading."""
         with self._lock:

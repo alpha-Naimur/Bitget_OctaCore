@@ -78,3 +78,31 @@ def test_cascade_fallback_to_deterministic_when_all_fail(monkeypatch):
     res = llm_agent.run_agent_turn("Scan tokenized US stocks")
     assert "Deterministic Fallback" in res["provider"]
     assert "7x24" in res["response"] or "US Equities" in res["response"]
+
+
+def test_orchestrator_close_futures_position_intent():
+    from src.bitget.simulator import simulator
+    simulator.reset()
+
+    # 1. No active futures position -> Must reply "You don't have any running future trade"
+    # and MUST NOT open any spot trade
+    res = orchestrator.process_command("close btc long position")
+    assert "You don't have any running future trade" in res["response"]
+    assert simulator.get_balance("BTC") <= 0.00001
+    assert "BTCUSDT" not in simulator.futures_positions
+
+    # 2. Open a futures position
+    simulator.execute_futures_order("BTCUSDT", "BUY", amount_usdt=100.0, leverage=10)
+    assert "BTCUSDT" in simulator.futures_positions
+
+    # 3. Request close -> Must close the futures position and NOT open a spot trade
+    res_close = orchestrator.process_command("close btc long position")
+    assert "BTCUSDT" not in simulator.futures_positions
+    assert simulator.get_balance("BTC") <= 0.00001
+    # Check that execution tool was close_futures_position or that response reports closed
+    assert "closed" in res_close["response"].lower() or "filled" in res_close["response"].lower() or "success" in res_close["response"].lower()
+
+    # 4. Now that it is closed, requesting close again must reply "You don't have any running future trade"
+    res_again = orchestrator.process_command("close btc long position")
+    assert "You don't have any running future trade" in res_again["response"]
+

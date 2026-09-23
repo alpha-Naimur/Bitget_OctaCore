@@ -60,6 +60,23 @@ def execute_futures_order(
     )
 
 
+def close_futures_position(
+    symbol: str,
+    side: Optional[str] = None,
+    reason: str = "Autonomous Futures Position Close"
+) -> Dict[str, Any]:
+    """Close an active futures position (LONG or SHORT) for a given symbol.
+
+    If no running position is found, returns found=False with guidance.
+    """
+    return trading_engine.close_futures_position(
+        symbol=symbol,
+        side=side,
+        reason=reason,
+        agent_core="Core 5 - Execution Agent"
+    )
+
+
 def execute_smart_dca(
     symbol: str,
     base_dca_amount_usdt: float = 100.0

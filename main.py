@@ -27,5 +27,9 @@ if BACKEND_DIR not in sys.path:
 os.chdir(BACKEND_DIR)
 
 if __name__ == "__main__":
-    import main as backend_main
+    import importlib.util
+    backend_main_path = os.path.join(BACKEND_DIR, "main.py")
+    spec = importlib.util.spec_from_file_location("backend_main_module", backend_main_path)
+    backend_main = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(backend_main)
     backend_main.main()

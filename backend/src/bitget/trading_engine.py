@@ -191,6 +191,26 @@ class TradingEngine:
         res = bitget_client.place_futures_order(symbol, side, order_type="market", size=size)
         return res
 
+    def close_futures_position(
+        self,
+        symbol: str,
+        side: Optional[str] = None,
+        reason: str = "Close Futures Position",
+        agent_core: str = "Core 5 - Execution Agent"
+    ) -> Dict[str, Any]:
+        """Dispatch futures position close to Simulator or Live Bitget API."""
+        symbol = symbol.upper()
+
+        if (self.kill_switch_active or simulator.kill_switch_triggered) and "KILL-SWITCH" not in reason:
+            return {"success": False, "found": False, "message": "Emergency Kill-Switch is active. Orders rejected."}
+
+        return simulator.close_futures_position(
+            symbol=symbol,
+            side=side,
+            reason=reason,
+            agent_core=agent_core
+        )
+
     def execute_smart_dca(
         self,
         symbol: str,
