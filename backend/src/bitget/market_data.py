@@ -219,6 +219,7 @@ class MarketDataFeed:
         if df is None or len(df) < 20:
             # Fallback mock/simulated TA if network or symbol not reachable
             current_price = self.get_ticker_price(symbol) or 100.0
+            rec_prices = [round(current_price * (1.0 + 0.002 * (i - 5)), 2) for i in range(6)]
             return {
                 "symbol": symbol,
                 "current_price": current_price,
@@ -229,7 +230,8 @@ class MarketDataFeed:
                 "bollinger_bands": {"upper": current_price * 1.02, "middle": current_price, "lower": current_price * 0.98},
                 "atr_14": current_price * 0.015,
                 "bias": "NEUTRAL",
-                "is_us_stock": symbol.upper() in TOKENIZED_US_STOCKS
+                "is_us_stock": symbol.upper() in TOKENIZED_US_STOCKS,
+                "recent_prices": rec_prices
             }
 
         closes = df["close"].values
@@ -330,7 +332,8 @@ class MarketDataFeed:
             },
             "atr_14": round(atr_val, 4),
             "bias": bias,
-            "is_us_stock": symbol.upper() in TOKENIZED_US_STOCKS
+            "is_us_stock": symbol.upper() in TOKENIZED_US_STOCKS,
+            "recent_prices": [round(float(p), 2) for p in closes[-6:]] if len(closes) >= 6 else [round(float(p), 2) for p in closes]
         }
 
     def get_order_book_depth(self, symbol: str, limit: int = 15) -> Dict[str, Any]:
