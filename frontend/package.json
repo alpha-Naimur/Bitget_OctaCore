@@ -1,0 +1,26 @@
+{
+  "name": "bitget-octacore-dashboard",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Bitget OctaCore Institutional AI Agentic Trading Desk - Vercel Frontend",
+  "scripts": {
+    "dev": "vite",
+    "build": "echo 'Static HTML build complete'",
+    "preview": "vite preview",
+    "serve": "npx serve ."
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  },
+  "keywords": [
+    "bitget",
+    "trading",
+    "ai",
+    "crypto",
+    "stocks",
+    "agentic",
+    "vercel"
+  ],
+  "author": "Bitget OctaCore Team",
+  "license": "MIT"
+}
