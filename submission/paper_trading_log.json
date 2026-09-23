@@ -1,8 +1,8 @@
 {
   "system": "Bitget OctaCore - Track 2 Agentic Trading",
-  "last_updated": "2026-09-23T15:56:20.792871+00:00",
+  "last_updated": "2026-09-23T16:13:46.845399+00:00",
   "performance_summary": {
-    "total_trades": 23,
+    "total_trades": 25,
     "closed_trades": 9,
     "winning_trades": 6,
     "losing_trades": 3,
@@ -10,7 +10,7 @@
     "realized_pnl_usdt": 17.76,
     "profit_factor": 4.63,
     "avg_trade_pnl": 1.97,
-    "total_volume_usdt": 5137.76
+    "total_volume_usdt": 5337.76
   },
   "trades": [
     {
@@ -379,6 +379,38 @@
       "status": "FILLED",
       "reason": "EMERGENCY KILL-SWITCH",
       "agent_core": "Core 4 - Risk Guardian",
+      "execution_mode": "SIMULATION"
+    },
+    {
+      "id": "82101fe7",
+      "timestamp": "2026-09-23T16:11:41.405122+00:00",
+      "symbol": "BTCUSDT",
+      "side": "FUTURES_BUY",
+      "order_type": "MARKET",
+      "amount_usdt": 100.0,
+      "price": 84241.9,
+      "quantity": 0.0012,
+      "fee": 0.06,
+      "pnl": 0.0,
+      "status": "FILLED",
+      "reason": "User-directed LONG BTC position, $100 notional at 3x conservative leverage (well below the $500 Risk Guardian single-order cap). Leverage deliberately capped at 3x to keep liquidation distance wide and margin usage minimal pending confirmation from Core 1/Core 2 signals.",
+      "agent_core": "Core 5 - Execution Agent",
+      "execution_mode": "SIMULATION"
+    },
+    {
+      "id": "fd80ef3e",
+      "timestamp": "2026-09-23T16:13:46.845356+00:00",
+      "symbol": "BTCUSDT",
+      "side": "BUY",
+      "order_type": "MARKET",
+      "amount_usdt": 100.0,
+      "price": 84316.3992,
+      "quantity": 0.001186,
+      "fee": 0.06,
+      "pnl": 0.0,
+      "status": "FILLED",
+      "reason": "Autonomous Direct Execution",
+      "agent_core": "Core 5 - Execution Agent",
       "execution_mode": "SIMULATION"
     }
   ]

@@ -241,6 +241,14 @@ OPENAI_TOOL_SPECS = [
     {
         "type": "function",
         "function": {
+            "name": "deactivate_kill_switch",
+            "description": "Deactivates the emergency kill switch and resumes normal trading operations.",
+            "parameters": {"type": "object", "properties": {}}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "get_portfolio_status",
             "description": "Fetch portfolio total equity, available USDT, unrealized/realized PnL, and asset breakdown.",
             "parameters": {"type": "object", "properties": {}}
