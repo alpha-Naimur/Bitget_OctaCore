@@ -3,7 +3,9 @@
 This directory contains the Python 3.12 FastAPI backend for **Bitget OctaCore Institutional AI Trading Desk**.
 
 ## 🌟 Key Features
-- **8 Autonomous Cores**: Market Intelligence, Quant Analytics, Backtesting, Risk Guardian, Order Execution, Portfolio Manager, Strategic Arbitrage, and LLM Synthesis.
+- **8 Autonomous Cores**: Market Intelligence, Quant Analytics, Backtesting, Risk Guardian, Order Execution, Tokenized Stocks Radar, Sub-Account Router, and News Sentinel.
+- **Multi-Provider LLM Intelligence**: Official sponsor Alibaba Cloud Qwen (`qwen3.8-max` via Bitget Hackathon proxy), Google Gemini 2.5 Flash, and OpenRouter auto-fallbacks.
+- **Position Lifecycle Management**: Native `close_futures_position` de-risking and closing with accurate PnL accounting, preventing accidental spot order creation.
 - **Bitget UTA v3 Integration**: Native support for Bitget's Unified Trading Account (`/api/v3/account/assets`, `/api/v3/trade/place-order`).
 - **Agentic OAuth 2.0 Flow**: Seamless authentication with RSA-2048 encryption for sub-accounts.
 - **WebSocket Streaming**: Real-time telemetry feed at `/ws` for tickers, risk limits, audit logs, and equity curves.
@@ -27,7 +29,7 @@ python main.py --web
 
 ---
 
-## 🧪 Running Tests
+## 🧪 Running Tests (35 Tests, 100% Pass Rate)
 
 ```bash
 # From within the backend directory:

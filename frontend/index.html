@@ -255,15 +255,41 @@
       border-color: rgba(0, 240, 255, 0.4);
       background: rgba(0, 240, 255, 0.04);
     }
+    .ticker-item.active {
+      border-color: var(--cyan);
+      background: rgba(0, 240, 255, 0.12);
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.25);
+    }
 
     .badge-7x24 {
       background: rgba(0, 240, 255, 0.12);
       color: var(--cyan);
-      padding: 2px 5px;
+      border: 1px solid rgba(0, 240, 255, 0.25);
+      padding: 2px 7px;
       border-radius: 4px;
       font-size: 9px;
       font-weight: 800;
       letter-spacing: 0.4px;
+      font-family: 'JetBrains Mono', monospace;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+    .badge-crypto {
+      background: rgba(245, 158, 11, 0.14);
+      color: #f59e0b;
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.4px;
+      font-family: 'JetBrains Mono', monospace;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
     }
     .pos-change { color: var(--green); font-weight: 600; }
     .neg-change { color: var(--red); font-weight: 600; }
@@ -1410,13 +1436,15 @@
 
   <!-- Live 7x24 Ticker Streamer -->
   <div class="ticker-bar" id="tickerBar">
-    <div class="ticker-item"><span class="badge-7x24">7x24</span> NVDA: $128.45 <span class="pos-change">+3.42%</span></div>
-    <div class="ticker-item"><span class="badge-7x24">7x24</span> AAPL: $232.10 <span class="pos-change">+1.15%</span></div>
-    <div class="ticker-item"><span class="badge-7x24">7x24</span> TSLA: $218.70 <span class="neg-change">-0.84%</span></div>
-    <div class="ticker-item"><span class="badge-7x24">7x24</span> SPY: $582.40 <span class="pos-change">+0.65%</span></div>
-    <div class="ticker-item">BTC: $91,240 <span class="pos-change">+2.80%</span></div>
-    <div class="ticker-item">ETH: $2,740 <span class="pos-change">+1.95%</span></div>
-    <div class="ticker-item">BGB: $1.42 <span class="pos-change">+4.10%</span></div>
+    <div class="ticker-item active" onclick="selectAsset('NVDAUSDT')"><span class="badge-7x24">7x24</span> NVDA: $224.81 <span class="neg-change">-0.02%</span></div>
+    <div class="ticker-item" onclick="selectAsset('AAPLUSDT')"><span class="badge-7x24">7x24</span> AAPL: $336.91 <span class="neg-change">-0.02%</span></div>
+    <div class="ticker-item" onclick="selectAsset('TSLAUSDT')"><span class="badge-7x24">7x24</span> TSLA: $188.11 <span class="pos-change">+0.01%</span></div>
+    <div class="ticker-item" onclick="selectAsset('SPYUSDT')"><span class="badge-7x24">7x24</span> SPY: $582.40 <span class="pos-change">+0.65%</span></div>
+    <div class="ticker-item" onclick="selectAsset('QQQUSDT')"><span class="badge-7x24">7x24</span> QQQ: $502.10 <span class="pos-change">+0.45%</span></div>
+    <div class="ticker-item" onclick="selectAsset('BTCUSDT')">BTC: $84,220 <span class="neg-change">-0.02%</span></div>
+    <div class="ticker-item" onclick="selectAsset('ETHUSDT')">ETH: $2,664 <span class="neg-change">-0.02%</span></div>
+    <div class="ticker-item" onclick="selectAsset('SOLUSDT')">SOL: $114.60 <span class="neg-change">-0.02%</span></div>
+    <div class="ticker-item" onclick="selectAsset('BGBUSDT')">BGB: $2.02 <span class="neg-change">-0.04%</span></div>
   </div>
 
   <!-- Main Grid -->
@@ -1441,9 +1469,10 @@
 
       <div class="quick-chips">
         <div class="chip" onclick="sendPrompt('Scan 7x24 Tokenized US Stocks and highlight top momentum')">🇺🇸 US Equities</div>
-        <div class="chip" onclick="sendPrompt('Analyze NVDAUSDT technicals and risk factors')">📈 Analyze NVDA</div>
-        <div class="chip" onclick="sendPrompt('Run backtest on AAPLUSDT using RSI Mean Reversion')">📊 Backtest AAPL</div>
-        <div class="chip" onclick="sendPrompt('Execute paper trade buy 100 USDT of TSLAUSDT')">⚡ Buy TSLA $100</div>
+        <div class="chip" onclick="selectAsset('NVDAUSDT')">📈 Analyze NVDA</div>
+        <div class="chip" onclick="selectAsset('AAPLUSDT')">📊 Analyze AAPL</div>
+        <div class="chip" onclick="selectAsset('TSLAUSDT')">⚡ Analyze TSLA</div>
+        <div class="chip" onclick="selectAsset('BTCUSDT')">₿ Analyze BTC</div>
         <div class="chip" onclick="sendPrompt('Check portfolio status and paper trading metrics')">💼 Portfolio PnL</div>
       </div>
 
@@ -1465,8 +1494,8 @@
       <!-- Telemetry Tab -->
       <div id="tabTelemetry" class="desk-card" style="flex: 1;">
         <div class="card-header">
-          <div class="card-title">📈 NVDAUSDT — 7x24 Continuous Mix Futures</div>
-          <span class="badge-7x24">7x24 RTOKEN / FUTURES</span>
+          <div class="card-title" id="teleCardTitle">📈 NVDAUSDT — 7x24 Continuous Mix Futures</div>
+          <span class="badge-7x24" id="teleBadge">7x24 RTOKEN / FUTURES</span>
         </div>
 
         <div class="metric-grid">
@@ -1825,6 +1854,124 @@
       });
     }
 
+    let currentSelectedSymbol = 'NVDAUSDT';
+
+    async function selectAsset(symbol) {
+      if (!symbol) return;
+      let symClean = symbol.toUpperCase().trim();
+      if (!symClean.endsWith('USDT') && !symClean.endsWith('USD')) {
+        symClean = `${symClean}USDT`;
+      }
+      currentSelectedSymbol = symClean;
+      const baseAsset = symClean.replace('USDT', '').replace('USD', '');
+
+      // 1. Highlight ticker item in the top ticker bar
+      document.querySelectorAll('#tickerBar .ticker-item').forEach(el => {
+        const text = (el.textContent || '').toUpperCase();
+        if (text.includes(baseAsset)) {
+          el.classList.add('active');
+        } else {
+          el.classList.remove('active');
+        }
+      });
+
+      // 2. Update Center Telemetry & Live TA Chart
+      updateCenterTelemetryForSymbol(symClean);
+
+      // 3. Dispatch analysis to Chat Desk so the chat portion gets the respective data
+      const promptText = `Analyze ${symClean} technicals and risk factors`;
+      sendPrompt(promptText);
+
+      // 4. Update Chat input placeholder to match selected asset
+      const inputEl = document.getElementById('chatInput');
+      if (inputEl) {
+        inputEl.placeholder = `Command agent for ${baseAsset} (e.g., 'buy 20$ ${baseAsset}', 'long ${baseAsset} for 100$')...`;
+      }
+    }
+
+    async function updateCenterTelemetryForSymbol(sym) {
+      const baseAsset = sym.replace('USDT', '').replace('USD', '');
+      const isStock = ['NVDA', 'AAPL', 'TSLA', 'SPY', 'QQQ', 'MSFT', 'AMZN', 'GOOGL'].includes(baseAsset);
+
+      const titleEl = document.getElementById('teleCardTitle');
+      const badgeEl = document.getElementById('teleBadge');
+      if (titleEl) {
+        titleEl.textContent = `📈 ${sym} — ${isStock ? '7x24 Continuous Mix Futures' : 'Perpetual Mix Futures'}`;
+      }
+      if (badgeEl) {
+        if (isStock) {
+          badgeEl.className = 'badge-7x24';
+          badgeEl.textContent = '7x24 RTOKEN / FUTURES';
+        } else {
+          badgeEl.className = 'badge-crypto';
+          badgeEl.textContent = 'CRYPTO PERPETUAL / FUTURES';
+        }
+      }
+
+      // Switch to telemetry tab if another tab was active
+      const tabTele = document.getElementById('tabTelemetry');
+      if (tabTele && tabTele.style.display === 'none') {
+        switchCenterTab(null, 'telemetry');
+        const firstTabBtn = document.querySelector('#centerTabs .tab-btn');
+        if (firstTabBtn) {
+          document.querySelectorAll('#centerTabs .tab-btn').forEach(b => b.classList.remove('active'));
+          firstTabBtn.classList.add('active');
+        }
+      }
+
+      try {
+        const res = await fetch(apiUrl(`/api/ta/${sym}`));
+        if (!res.ok) return;
+        const ta = await res.json();
+
+        const pEl = document.getElementById('telePrice');
+        if (pEl && ta.current_price !== undefined) {
+          const pr = Number(ta.current_price);
+          pEl.textContent = pr < 10 ? `$${pr.toFixed(4)}` : (pr > 1000 ? `$${pr.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : `$${pr.toFixed(2)}`);
+        }
+
+        const rsiEl = document.getElementById('teleRSI');
+        if (rsiEl && ta.rsi_14 !== undefined) {
+          const rsi = Number(ta.rsi_14);
+          rsiEl.textContent = rsi.toFixed(1);
+          rsiEl.style.color = rsi < 35 ? 'var(--green)' : (rsi > 70 ? 'var(--red)' : 'var(--cyan)');
+        }
+
+        const macdEl = document.getElementById('teleMACD');
+        if (macdEl && ta.macd && ta.macd.histogram !== undefined) {
+          const hist = Number(ta.macd.histogram);
+          macdEl.textContent = `${hist >= 0 ? '+' : ''}${hist.toFixed(2)}`;
+          macdEl.style.color = hist >= 0 ? 'var(--green)' : 'var(--red)';
+        }
+
+        const biasEl = document.getElementById('teleBias');
+        if (biasEl && ta.bias) {
+          biasEl.textContent = ta.bias;
+          biasEl.style.color = ta.bias === 'BULLISH' ? 'var(--green)' : (ta.bias === 'BEARISH' ? 'var(--red)' : 'var(--amber)');
+        }
+
+        if (equityChartInstance) {
+          let points = ta.recent_prices;
+          if (!points || points.length === 0) {
+            const currentPr = Number(ta.current_price) || 100.0;
+            points = [
+              Number((currentPr * 0.985).toFixed(2)),
+              Number((currentPr * 0.992).toFixed(2)),
+              Number((currentPr * 0.989).toFixed(2)),
+              Number((currentPr * 1.004).toFixed(2)),
+              Number((currentPr * 1.008).toFixed(2)),
+              Number(currentPr.toFixed(2))
+            ];
+          }
+          equityChartInstance.data.datasets[0].label = `${sym} Price ($)`;
+          equityChartInstance.data.datasets[0].data = points;
+          equityChartInstance.update();
+        }
+      } catch (err) {
+        console.error(`Failed to fetch TA for ${sym}:`, err);
+      }
+    }
+
     function switchCenterTab(evt, tab) {
       document.querySelectorAll('#centerTabs .tab-btn').forEach(b => b.classList.remove('active'));
       document.getElementById('tabTelemetry').style.display = 'none';
@@ -2171,6 +2318,9 @@
             count++;
 
             const tr = document.createElement('tr');
+            tr.style.cursor = 'pointer';
+            tr.title = `Click to select and analyze ${sym}`;
+            tr.onclick = () => selectAsset(h.symbol || h.asset);
             const sym = (h.asset || h.symbol || '').replace('USDT', '');
             const pnlVal = h.unrealized_pnl || 0;
             const pnlColor = pnlVal >= 0 ? 'var(--green)' : 'var(--red)';
@@ -2246,7 +2396,8 @@
         const chgClass = (chg >= 0) ? 'pos-change' : 'neg-change';
         const sign = (chg >= 0) ? '+' : '';
         const pr = s.price || 0;
-        html += `<div class="ticker-item"><span class="badge-7x24">7x24</span> ${s.symbol.replace('USDT','')}: $${pr.toFixed(2)} <span class="${chgClass}">${sign}${chg.toFixed(2)}%</span></div>`;
+        const isAct = (s.symbol === currentSelectedSymbol || s.symbol.replace('USDT','') === currentSelectedSymbol.replace('USDT',''));
+        html += `<div class="ticker-item ${isAct ? 'active' : ''}" onclick="selectAsset('${s.symbol}')"><span class="badge-7x24">7x24</span> ${s.symbol.replace('USDT','')}: $${pr.toFixed(2)} <span class="${chgClass}">${sign}${chg.toFixed(2)}%</span></div>`;
       });
 
       cryptos.slice(0, 4).forEach(c => {
@@ -2254,22 +2405,27 @@
         const chgClass = (chg >= 0) ? 'pos-change' : 'neg-change';
         const sign = (chg >= 0) ? '+' : '';
         const pr = c.price || 0;
-        html += `<div class="ticker-item">${c.symbol.replace('USDT','')}: $${pr.toLocaleString('en-US', {minimumFractionDigits: 2})} <span class="${chgClass}">${sign}${chg.toFixed(2)}%</span></div>`;
+        const isAct = (c.symbol === currentSelectedSymbol || c.symbol.replace('USDT','') === currentSelectedSymbol.replace('USDT',''));
+        html += `<div class="ticker-item ${isAct ? 'active' : ''}" onclick="selectAsset('${c.symbol}')">${c.symbol.replace('USDT','')}: $${pr.toLocaleString('en-US', {minimumFractionDigits: 2})} <span class="${chgClass}">${sign}${chg.toFixed(2)}%</span></div>`;
       });
 
       if (html) bar.innerHTML = html;
 
-      // Update NVDA telemetry values in telemetry tab
-      const nvda = stocks.find(s => s.symbol === 'NVDAUSDT');
-      if (nvda) {
+      // Update currently selected asset telemetry values in telemetry tab
+      const currentAssetData = stocks.find(s => s.symbol === currentSelectedSymbol || s.symbol.replace('USDT','') === currentSelectedSymbol.replace('USDT','')) ||
+                               cryptos.find(c => c.symbol === currentSelectedSymbol || c.symbol.replace('USDT','') === currentSelectedSymbol.replace('USDT',''));
+      if (currentAssetData) {
         const pEl = document.getElementById('telePrice');
-        if (pEl && nvda.price) pEl.textContent = `$${nvda.price.toFixed(2)}`;
+        if (pEl && currentAssetData.price) {
+          const pr = Number(currentAssetData.price);
+          pEl.textContent = pr < 10 ? `$${pr.toFixed(4)}` : (pr > 1000 ? `$${pr.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : `$${pr.toFixed(2)}`);
+        }
         const rsiEl = document.getElementById('teleRSI');
-        if (rsiEl && nvda.rsi) rsiEl.textContent = `${nvda.rsi.toFixed(1)}`;
+        if (rsiEl && currentAssetData.rsi) rsiEl.textContent = `${currentAssetData.rsi.toFixed(1)}`;
         const biasEl = document.getElementById('teleBias');
-        if (biasEl && nvda.bias) {
-          biasEl.textContent = nvda.bias;
-          biasEl.style.color = nvda.bias === 'BULLISH' ? 'var(--green)' : (nvda.bias === 'BEARISH' ? 'var(--red)' : 'var(--amber)');
+        if (biasEl && currentAssetData.bias) {
+          biasEl.textContent = currentAssetData.bias;
+          biasEl.style.color = currentAssetData.bias === 'BULLISH' ? 'var(--green)' : (currentAssetData.bias === 'BEARISH' ? 'var(--red)' : 'var(--amber)');
         }
       }
     }

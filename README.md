@@ -50,6 +50,8 @@ Traditional algorithmic trading bots are rigid rule-based scripts that cannot ad
 4. **Alibaba Cloud Qwen & Google GenAI Dual Engine**: Native integration with official sponsor **Alibaba Cloud Qwen** (`qwen3.8-max` via Bitget's Hackathon endpoint `https://hackathon.bitgetops.com/v1`) with fallback to **Google GenAI / Gemini** and deterministic quantitative fallback.
 5. **Audited Paper Trading Logger**: Automatically logs all executed paper trades, slippage, PnL, and performance statistics to `submission/paper_trading_log.json` to fulfill Track 2 submission requirements.
 6. **Pre-Trade Mathematical Firewall & 1-Click Kill-Switch**: Hard-coded constraints (\$500 single order cap, \$1,000 asset position cap, 5% max drawdown halt) paired with a 1-click **Emergency Kill-Switch** that instantly liquidates positions to stablecoins.
+7. **Position Lifecycle Management & De-risking**: Full futures position management with native `close_futures_position`. The AI agent resolves natural language requests (e.g. "close btc long position", "de-risk eth future") by identifying and terminating active contracts, calculating realized PnL, and gracefully alerting when no position is open.
+8. **Interactive 7×24 Ticker Streamer & Cross-Panel Sync**: Seamless UI synchronization across the live ticker bar, telemetry chart, and AI Agent Desk. Clicking any equity or crypto asset instantly refocuses the chart with historical candles, updates technical levels, and transmits the selected asset's market context to the AI assistant.
 
 ---
 
@@ -101,7 +103,7 @@ flowchart TD
 2. **Core 2 - Quant Engine Agent**: Evaluates downside tail risk ($VaR_{95\%}, VaR_{99\%}, CVaR_{95\%}$), Sharpe & Sortino ratios, Hurst Exponent time-series regime modeling ($H < 0.45$ Mean-Reverting, $H > 0.55$ Trending Momentum), Ornstein-Uhlenbeck half-life, and Markowitz MPT portfolio optimization.
 3. **Core 3 - Backtesting Engine Agent**: Simulates historical trading across 6 quantitative architectures (`EMA_CROSSOVER`, `RSI_MEAN_REVERSION`, `MACD_TREND`, `BOLLINGER_BREAKOUT`, `QUANT_MULTI_FACTOR`, `DYNAMIC_DCA`) with realistic fees (0.06% futures / 0.10% spot), slippage, and equity curve data points.
 4. **Core 4 - Risk Guardian Agent**: Enforces a strict mathematical pre-trade safety firewall before any order can be dispatched: \$500 single order cap, \$1,000 position cap, 5% max drawdown halt, daily trade count limits, and a 1-click Emergency Kill-Switch.
-5. **Core 5 - Execution Agent**: Dispatches signed orders across Spot, Mix Futures (USDT-margined), and Volatility-Scaled Smart DCA accumulation.
+5. **Core 5 - Execution Agent**: Dispatches signed orders across Spot, Mix Futures (USDT-margined), and Volatility-Scaled Smart DCA accumulation, and provides complete position lifecycle management (`close_futures_position`) with margin release and realized PnL accounting.
 6. **Core 6 - Tokenized US Stocks Agent**: Monitors and executes across 7×24 continuous tokenized US equities (`NVDAUSDT`, `AAPLUSDT`, `TSLAUSDT`, `SPYUSDT`, `QQQUSDT`), detects after-hours macro divergence, and executes delta hedges against Crypto.
 7. **Core 7 - Sub-Account Router Agent**: Manages isolated sub-account operations, reads live permission restrictions, masks UIDs for privacy (`UID: 1273******`), and executes zero-fee internal transfers between Spot and Mix Futures.
 8. **Core 8 - News Sentinel Agent**: Continuously polls breaking headlines, macro catalysts (Fed policy, rate cuts, tech earnings), and evaluates black-swan volatility threats.
@@ -201,11 +203,14 @@ Each skill is packaged with a dedicated `SKILL.md` and `tools.py` conforming to 
 
 ### 1. Pure-Black Institutional Web Dashboard
 - Accessible at `http://127.0.0.1:8000`
-- Real-time Crypto & 7×24 Tokenized US Stock ticker streamer (`NVDA`, `AAPL`, `TSLA`, `SPY`, `BTC`, `ETH`, `BGB`).
-- Interactive AI Chat Desk with tool call visualization.
-- Real-time chart canvas with price and strategy equity curves.
-- Live Portfolio & Position monitor with **1-Click Export Paper Trading Log** (JSON/CSV).
-- 1-Click Emergency Kill-Switch with confirmation barrier.
+- **Real-Time 7×24 Ticker Streamer**: Live quotes for tokenized US stocks (`NVDA`, `AAPL`, `TSLA`, `SPY`, `QQQ`) and digital assets (`BTC`, `ETH`, `SOL`, `BGB`).
+- **Dynamic Cross-Panel Asset Selection**: Clicking any asset pill or holdings row highlights the ticker (`.ticker-item.active`), refocuses the center telemetry card, renders historical price candles and moving averages on the chart, and injects market context into the AI Agent Desk.
+- **Distinguished Asset Badging**: Visual badge indicators differentiating 24/7 tokenized equities (`.badge-7x24`) from crypto perpetuals (`.badge-crypto`).
+- **Interactive AI Chat Desk**: Natural language trade orchestration, multi-turn tool calling visualization, and risk parameter displays.
+- **Position Lifecycle Controls**: Safely close or de-risk futures contracts directly via chat ("close btc long position") or dashboard with realized PnL accounting.
+- **Real-Time Charting Canvas**: Dual-mode chart displaying asset price trajectories and historical backtest strategy equity curves.
+- **Audited Portfolio & Trade Monitor**: Instant 1-click export of paper trading logs (`submission/paper_trading_log.json`) in JSON/CSV formats.
+- **1-Click Emergency Kill-Switch**: Sub-second liquidation barrier that unwinds all risk exposure to USDT.
 
 ### 2. Rich Terminal CLI
 - Accessible via `python main.py --cli`
@@ -216,7 +221,7 @@ Each skill is packaged with a dedicated `SKILL.md` and `tools.py` conforming to 
 ## 📁 Repository Structure
 
 ```text
-Bitget Hackathon P2/
+Bitget_OctaCore/
 ├── frontend/                             # 🌐 Standalone Edge Frontend (Vercel Ready)
 │   ├── index.html                        # Pure-Black Glassmorphism Trading Desk
 │   ├── config.js                         # Dynamic Backend & WebSocket Resolver
@@ -232,7 +237,7 @@ Bitget Hackathon P2/
 │   │   ├── mcp/                          # Fast JSON-RPC 2.0 MCP Server
 │   │   └── web/                          # FastAPI REST & WebSocket Server (/api/*, /ws)
 │   ├── bitget_skills_hub/                # 8 Modular Skills conforming to Bitget Agent Hub
-│   ├── tests/                            # Complete Pytest Test Suite (33 Tests)
+│   ├── tests/                            # Complete Pytest Test Suite (35 Tests)
 │   ├── main.py                           # Backend Launcher (CLI, Web, MCP, OAuth)
 │   ├── requirements.txt                  # Backend Dependencies
 │   ├── Dockerfile                        # Multi-Stage Production Container
@@ -262,8 +267,9 @@ Bitget Hackathon P2/
 
 ### 2. Installation
 ```bash
-# Clone or navigate to the project directory
-cd "d:\development\Bitget Hackathon P2"
+# Clone the repository
+git clone https://github.com/alpha-Naimur/Bitget_OctaCore.git
+cd Bitget_OctaCore
 
 # Install dependencies
 pip install -r requirements.txt
@@ -298,7 +304,7 @@ Open **`http://127.0.0.1:8000`** in your browser to access the pure-black glassm
 python main.py --cli
 ```
 
-### 6. Run the Test Suite
+### 6. Run the Test Suite (35/35 Passing Tests)
 ```bash
 python main.py --test
 # Or directly:
@@ -318,7 +324,7 @@ To connect with **Claude Desktop**, **Cursor**, or **Windsurf**, add OctaCore to
   "mcpServers": {
     "bitget-octacore": {
       "command": "python",
-      "args": ["d:/development/Bitget Hackathon P2/main.py", "--mcp"]
+      "args": ["/path/to/Bitget_OctaCore/main.py", "--mcp"]
     }
   }
 }

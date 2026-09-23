@@ -60,7 +60,7 @@ You can link your Vercel frontend to your deployed backend using standard develo
 
 ### Method 1: Vercel Reverse Proxy Rewrites (Recommended for Production)
 To route all `/api/*` and `/ws` calls transparently under your Vercel domain without exposing CORS:
-Edit [`frontend/vercel.json`](file:///d:/development/Bitget%20Hackathon%20P2/frontend/vercel.json):
+Edit [`frontend/vercel.json`](vercel.json):
 ```json
 {
   "rewrites": [
@@ -77,7 +77,7 @@ Edit [`frontend/vercel.json`](file:///d:/development/Bitget%20Hackathon%20P2/fro
 ```
 
 ### Method 2: Global Configuration Variable
-In [`frontend/config.js`](file:///d:/development/Bitget%20Hackathon%20P2/frontend/config.js) or via a CI/CD build script:
+In [`frontend/config.js`](config.js) or via a CI/CD build script:
 ```javascript
 window.__OCTACORE_BACKEND__ = "https://your-backend.up.railway.app";
 ```
