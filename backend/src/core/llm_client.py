@@ -268,7 +268,99 @@ You autonomously orchestrate 8 specialist agent cores:
 
 AUTONOMOUS EXECUTION DIRECTIVE:
 When requested to analyze, backtest, or trade, ALWAYS call the appropriate tools. Explain your quantitative reasoning, risk score, and expected edge. Every trade executed will be verified by the Risk Guardian and recorded in the audited Paper Trading Log for Hackathon judging.
+
+TRADE ORDER DIRECTIVE:
+When the user explicitly commands you to buy, sell, or trade an asset (e.g. 'buy 20$ of btc on spot', 'sell nvda', 'buy 100$ aapl'):
+You MUST call `execute_spot_order` (for Spot) or `execute_futures_order` (for Futures). You may call market analysis tools alongside it, but you MUST dispatch `execute_spot_order` or `execute_futures_order` in the same turn so the trade is actually executed and recorded.
+
+GREETING & CONVERSATIONAL DIRECTIVE:
+If the user is simply greeting you (e.g., 'hello', 'hi', 'hey', 'who are you', 'help') or asking what you can do, NEVER call trading, portfolio, or scanning tools. Greet them warmly as Bitget OctaCore, introduce your 8 specialist cores, and suggest actions they can take (e.g. 7x24 tokenized US stock scans, strategy backtests, or BTC market analysis).
 """
+
+
+def _format_tool_results_summary(user_prompt: str, tool_results: List[Dict[str, Any]]) -> str:
+    """Format executed tool outputs into an executive institutional summary if synthesis is delayed."""
+    lines = []
+    lines.append("### ⚡ Bitget OctaCore Institutional Telemetry")
+    lines.append(f"*Action Report for: \"{user_prompt}\"*\n")
+
+    for item in tool_results:
+        tname = item.get("tool_name", "")
+        res = item.get("result", {})
+        if not isinstance(res, dict):
+            continue
+
+        if tname == "get_technical_analysis":
+            sym = res.get("symbol", "N/A")
+            price = float(res.get("price") or 0.0)
+            rsi = float(res.get("rsi") or 50.0)
+            bias = res.get("bias", "NEUTRAL")
+            lines.append(f"#### 📊 Technical Analysis: {sym}")
+            lines.append(f"- **Current Price**: ${price:,.2f} USDT")
+            lines.append(f"- **RSI (14)**: {rsi:.1f} ({'Oversold' if rsi < 35 else ('Overbought' if rsi > 70 else 'Neutral')})")
+            lines.append(f"- **Market Bias**: **{bias}**")
+            if res.get("summary"):
+                lines.append(f"- **Summary**: {res.get('summary')}")
+            lines.append("")
+
+        elif tname == "get_quant_risk_metrics":
+            sym = res.get("symbol", "N/A")
+            lines.append(f"#### 📐 Quantitative Risk Radar: {sym}")
+            lines.append(f"- **Historical VaR (95%)**: {res.get('var_95_pct', 0.0)}%")
+            lines.append(f"- **Conditional VaR (CVaR)**: {res.get('cvar_95_pct', 0.0)}%")
+            lines.append(f"- **Sharpe Ratio**: {float(res.get('sharpe_ratio') or 0.0):.2f}")
+            lines.append(f"- **Risk Guardian Status**: {res.get('risk_status', 'APPROVED_WITHIN_LIMITS')}")
+            lines.append("")
+
+        elif tname == "get_portfolio_status":
+            lines.append("#### 💼 Portfolio Status")
+            total_val = res.get("total_value_usdt", res.get("total_equity_usdt", 0.0))
+            lines.append(f"- **Total Portfolio Valuation**: ${float(total_val or 0.0):,.2f} USDT")
+            lines.append(f"- **Available Cash**: ${float(res.get('available_usdt') or 0.0):,.2f} USDT")
+            lines.append(f"- **Realized PnL**: ${float(res.get('realized_pnl') or 0.0):,.2f}")
+            lines.append(f"- **Unrealized PnL**: ${float(res.get('unrealized_pnl') or 0.0):,.2f}")
+            lines.append("")
+
+        elif tname in ("execute_spot_order", "execute_futures_order"):
+            side = res.get("side", "")
+            sym = res.get("symbol", "")
+            amt = float(res.get("amount_usdt") or 0.0)
+            status = "FILLED" if res.get("success") else "REJECTED"
+            lines.append(f"#### 🚀 Order Execution: {side} {sym}")
+            lines.append(f"- **Status**: **{status}**")
+            lines.append(f"- **Notional Size**: ${amt:,.2f} USDT")
+            if res.get("fill_price"):
+                lines.append(f"- **Execution Price**: ${float(res.get('fill_price') or 0.0):,.4f}")
+            if res.get("order_id"):
+                lines.append(f"- **Order ID**: `{res.get('order_id')}`")
+            if res.get("error"):
+                lines.append(f"- **Firewall Notice**: {res.get('error')}")
+            lines.append("")
+
+        elif tname == "scan_tokenized_stocks":
+            stocks = res.get("stocks", [])
+            lines.append(f"#### 🇺🇸 7×24 Tokenized US Equities Radar ({len(stocks)} Contracts)")
+            for s in stocks[:5]:
+                sym = s.get("symbol", "")
+                pr = float(s.get("price") or 0.0)
+                chg = float(s.get("change_24h") or 0.0)
+                bias = s.get("bias", "NEUTRAL")
+                lines.append(f"- **{sym}**: ${pr:,.2f} ({chg:+.2f}%) | Bias: **{bias}**")
+            lines.append("")
+
+        elif tname == "run_strategy_backtest":
+            lines.append(f"#### 🧪 Strategy Backtest: {res.get('symbol')} ({res.get('strategy')})")
+            lines.append(f"- **Net Return**: {res.get('return_pct')}% (Benchmark: {res.get('benchmark_return_pct')}%)")
+            lines.append(f"- **Alpha over Market**: **+{res.get('alpha_pct')}%**")
+            lines.append(f"- **Sharpe Ratio**: {res.get('sharpe_ratio')} | **Max Drawdown**: {res.get('max_drawdown_pct')}%")
+            lines.append(f"- **Win Rate**: {res.get('win_rate_pct')}% ({res.get('total_trades')} trades)")
+            lines.append("")
+
+        elif tname == "trigger_emergency_kill_switch":
+            lines.append("🚨 **EMERGENCY KILL-SWITCH ENGAGED**: All open positions liquidated to USDT.")
+            lines.append("")
+
+    return "\n".join(lines)
 
 
 class LLMAgentEngine:
@@ -290,7 +382,7 @@ class LLMAgentEngine:
                 self.qwen_client = OpenAI(
                     api_key=qwen_key,
                     base_url=settings.QWEN_BASE_URL,
-                    timeout=5.0,
+                    timeout=15.0,
                     max_retries=1
                 )
             except Exception:
@@ -359,7 +451,7 @@ class LLMAgentEngine:
                     self.qwen_client = OpenAI(
                         api_key=key,
                         base_url=settings.QWEN_BASE_URL,
-                        timeout=5.0,
+                        timeout=25.0,
                         max_retries=1
                     )
                 except Exception:
@@ -367,6 +459,13 @@ class LLMAgentEngine:
 
         if not self.qwen_client:
             return None
+
+        # Check if greeting or casual chit-chat
+        prompt_clean = user_prompt.strip().lower().strip("!?.")
+        is_greeting = prompt_clean in [
+            "hi", "hello", "hey", "hola", "sup", "yo", "good morning", "good afternoon",
+            "good evening", "greetings", "help", "who are you", "what can you do", "test"
+        ]
 
         try:
             model_name = settings.LLM_MODEL if ("qwen" in (settings.LLM_MODEL or "").lower() and "/" not in (settings.LLM_MODEL or "")) else "qwen3.8-max"
@@ -377,10 +476,10 @@ class LLMAgentEngine:
             resp = self.qwen_client.chat.completions.create(
                 model=model_name,
                 messages=messages,
-                tools=OPENAI_TOOL_SPECS,
-                tool_choice="auto",
+                tools=OPENAI_TOOL_SPECS if not is_greeting else None,
+                tool_choice="auto" if not is_greeting else None,
                 temperature=settings.LLM_TEMPERATURE,
-                timeout=5.0
+                timeout=25.0
             )
             choice = resp.choices[0].message
             tool_calls = choice.tool_calls
@@ -400,26 +499,66 @@ class LLMAgentEngine:
                         "result": t_res
                     })
 
+                # Ensure explicit buy/sell orders requested by user are always executed
+                prompt_lower = user_prompt.lower()
+                is_order_command = any(k in prompt_lower for k in ["buy", "sell", "long", "short"])
+                has_execution_call = any(t["tool_name"] in ("execute_spot_order", "execute_futures_order") for t in tool_results)
+
+                if is_order_command and not has_execution_call:
+                    found_sym = "BTCUSDT"
+                    for s in ["NVDAUSDT", "AAPLUSDT", "TSLAUSDT", "SPYUSDT", "QQQUSDT", "ETHUSDT", "SOLUSDT", "BTCUSDT"]:
+                        if s.lower() in prompt_lower or s.replace("USDT", "").lower() in prompt_lower:
+                            found_sym = s
+                            break
+                    amount = 100.0
+                    numbers = re.findall(r"\b\d+(?:\.\d+)?\b", user_prompt)
+                    if numbers:
+                        for n in numbers:
+                            val = float(n)
+                            if 5.0 <= val <= 500.0:
+                                amount = val
+                                break
+                    side = "SELL" if ("sell" in prompt_lower or "short" in prompt_lower) else "BUY"
+                    if "future" in prompt_lower or "contract" in prompt_lower:
+                        order_res = execute_futures_order(symbol=found_sym, side=side, amount_usdt=amount, leverage=10, reason="Autonomous Direct Execution")
+                        tool_results.append({"tool_name": "execute_futures_order", "args": {"symbol": found_sym, "side": side, "amount_usdt": amount}, "result": order_res})
+                    else:
+                        order_res = execute_spot_order(symbol=found_sym, side=side, amount_usdt=amount, reason="Autonomous Direct Execution")
+                        tool_results.append({"tool_name": "execute_spot_order", "args": {"symbol": found_sym, "side": side, "amount_usdt": amount}, "result": order_res})
+
                 synth_prompt = (
                     f"User Request: {user_prompt}\n\n"
                     f"Tools executed: {json.dumps(tool_results, indent=2)}\n\n"
-                    "Synthesize an institutional trading report detailing the findings, decision logic, and trade execution status."
+                    "Synthesize a concise executive trading summary (2-4 sentences or bullets). "
+                    "Report current price, bias, risk check status, and order execution outcome directly."
                 )
-                synth_resp = self.qwen_client.chat.completions.create(
-                    model=model_name,
-                    messages=[
-                        {"role": "system", "content": build_system_prompt()},
-                        {"role": "user", "content": synth_prompt}
-                    ],
-                    temperature=settings.LLM_TEMPERATURE,
-                    timeout=5.0
-                )
+                try:
+                    synth_resp = self.qwen_client.chat.completions.create(
+                        model=model_name,
+                        messages=[
+                            {"role": "system", "content": "You are Bitget OctaCore. Provide a concise, clear trading summary based on the tool results."},
+                            {"role": "user", "content": synth_prompt}
+                        ],
+                        temperature=settings.LLM_TEMPERATURE,
+                        max_tokens=400,
+                        timeout=25.0
+                    )
+                    final_content = synth_resp.choices[0].message.content
+                except Exception as synth_err:
+                    memory.log("LLMEngine", f"Qwen synthesis call error: {synth_err}. Using structured tool formatter.", LogLevel.WARN)
+                    formatted_summary = _format_tool_results_summary(user_prompt, tool_results)
+                    final_content = formatted_summary or choice.content or f"Executed {len(tool_results)} tools successfully via Alibaba Cloud Qwen ({model_name})."
+
                 return {
                     "provider": f"{model_name} (Alibaba Cloud)",
-                    "response": synth_resp.choices[0].message.content,
+                    "response": final_content,
                     "tool_calls": tool_results
                 }
             else:
+                prompt_lower = user_prompt.lower()
+                is_order_command = any(k in prompt_lower for k in ["buy", "sell", "long", "short"])
+                if is_order_command:
+                    return self._run_deterministic_agent(user_prompt)
                 return {
                     "provider": f"{model_name} (Alibaba Cloud)",
                     "response": choice.content,
@@ -491,13 +630,19 @@ class LLMAgentEngine:
             {"role": "user", "content": user_prompt}
         ]
 
+        prompt_clean = user_prompt.strip().lower().strip("!?.")
+        is_greeting = prompt_clean in [
+            "hi", "hello", "hey", "hola", "sup", "yo", "good morning", "good afternoon",
+            "good evening", "greetings", "help", "who are you", "what can you do", "test"
+        ]
+
         # First attempt: Try with OpenAI Tool Calling schema
         try:
             resp = self.openrouter_client.chat.completions.create(
                 model=model_name,
                 messages=messages,
-                tools=OPENAI_TOOL_SPECS,
-                tool_choice="auto",
+                tools=OPENAI_TOOL_SPECS if not is_greeting else None,
+                tool_choice="auto" if not is_greeting else None,
                 temperature=settings.LLM_TEMPERATURE,
                 timeout=10.0
             )
@@ -538,7 +683,8 @@ class LLMAgentEngine:
                     final_content = synth_resp.choices[0].message.content
                 except Exception as synth_err:
                     memory.log("LLMEngine", f"OpenRouter synthesis call error: {synth_err}", LogLevel.WARN)
-                    final_content = choice.content or f"Executed {len(tool_results)} tools successfully via OpenRouter ({model_name})."
+                    formatted_summary = _format_tool_results_summary(user_prompt, tool_results)
+                    final_content = formatted_summary or choice.content or f"Executed {len(tool_results)} tools successfully via OpenRouter ({model_name})."
 
                 return {
                     "provider": f"OpenRouter ({model_name})",
